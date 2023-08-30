@@ -1,0 +1,15 @@
+batchsize: 1
+epoch: 200
+num_D: 2
+n_layers: 3
+official_data_path: "dataset/data_sloeaffa"
+
+img_size: [832, 1088]
+
+
+if_resume: True
+to_shuffle: True
+use_separable: False
+save_weights_up_dir: weights/exp_early_ruihua/
+norm_name: 'instance'
+

@@ -1,0 +1,27 @@
+batchsize: 8
+epoch: 9
+num_D: 2
+n_layers: 3
+
+# dataloader
+data_path: "dataset/data_sloeaffa"
+val_length: 100
+seed: -1 
+img_size: [832, 1088]
+
+
+
+if_resume: False
+to_shuffle: True
+use_separable: False
+updir: weights/exp_8_28
+norm_name: 'instance'
+
+# optim parameters
+nlr: 0.0002
+nbeta1: 0.5
+
+# reg stuff 
+use_reg: False
+noise_level: 1
+

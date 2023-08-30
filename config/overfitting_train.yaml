@@ -1,0 +1,13 @@
+repeat_time: 2000
+num_D: 2
+n_layers: 3
+single_data_path: "dataset/single_data"
+
+img_size: [832, 1088]
+
+
+if_resume: True
+to_shuffle: True
+use_separable: False
+save_weights_up_dir: weights/overfi/
+norm_name: 'instance'
