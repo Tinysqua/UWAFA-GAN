@@ -10,6 +10,7 @@ from torch import nn
 import os
 from models.modules import Whole_generator
 from models.reg import Reg, Transformer_2D
+from functools import partial
 
 def check_dir(dire):
     if not os.path.exists(dire):
@@ -103,10 +104,11 @@ def affine_model_save(gen, ra, trans2d, var_list, c_save, f_save, index, num=1):
 def main(args):
     BIGGER_SIZE = (1112, 1448)
     SMALLER_SIZE = (1112//2, 1448//2)
-    gen = Whole_generator().cuda()
+    device = args.device
+    gen = Whole_generator().to(device)
     gen.load_checkpoints(args.model_updir)
     if args.affine:
-        ra = Reg(BIGGER_SIZE[0], BIGGER_SIZE[1], 1, 1).cuda()
+        ra = Reg(BIGGER_SIZE[0], BIGGER_SIZE[1], 1, 1).to(device)
         ra.load_checkpoints(args.model_updir)
     c_save_path = check_dir(os.path.join(args.updir, 'Coarse_save'))
     f_save_path = check_dir(os.path.join(args.updir, 'Fine_save'))
@@ -117,7 +119,7 @@ def main(args):
         run_model_save(gen, var_list, 
                     c_save_path, f_save_path, args.index)
     else:
-        trans2d = Transformer_2D().cuda()
+        trans2d = Transformer_2D().to(device)
         for i in range(args.affine):
             var_list = get_tensor(slo_path, ffa_path, BIGGER_SIZE, SMALLER_SIZE, args.affine, args.noise_level)
             affine_model_save(gen, ra, trans2d, var_list, c_save_path, f_save_path, args.index, num=i+1)
@@ -130,7 +132,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_updir', type=str, default='weights/exp_8_17/')
     parser.add_argument('--affine', type=int, default=0)
     parser.add_argument('--noise_level', default=0)
-    
+    parser.add_argument('--device', type=str, default='cpu')
     
     args = parser.parse_args()
     main(args)

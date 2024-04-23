@@ -2,13 +2,14 @@ import argparse
 import yaml
 from dataloader import VT_dataloader
 from models.models import *
-from models.modules import Combine_trainer, Para_combine_trainer
+from models.modules import Para_combine_trainer
+from utils.Model_evaluation_changed import get_tensor, run_model_save
 from utils.VTGAN_loss import *
 from torch import nn
 from utils.visualization import Visualizer
 from shutil import copyfile
 import logging
-from metrics.Fid_computer import Kid_Or_Fid
+# from metrics.Fid_computer import Kid_Or_Fid
 from functools import partial
 from utils.common import get_parameters, check_dir
 from os.path import join
@@ -44,15 +45,15 @@ def main(args):
     
     model = Para_combine_trainer(**get_parameters(Para_combine_trainer, train_config))
     # this step will create the corresponding parrent dir
-    save_updir = train_config['updir']
+    save_updir = train_config['save_updir']
     cfg_base_name = save_updir.split('/')[-1]
     visualizer = Visualizer(weights_up_dir=check_dir(join(save_updir, 'tb_result')), way='tensorboard')
     copyfile(args.model_config_path, join(save_updir, f'config_{cfg_base_name}.yaml'))
     
     if train_config['if_resume']:
         model.load()
-        
-    metrics_computer = Kid_Or_Fid(if_cuda=False)
+        extra_epoch = int(train_config['updir'].split('_')[-1])
+    # metrics_computer = Kid_Or_Fid(if_cuda=False)
     count = 0
     best_fid_score = 100.
     visualizer.scalars_initialize()
@@ -61,7 +62,7 @@ def main(args):
         D_f_loss = 0
         D_c_loss = 0
         Gan_loss = 0
-        
+        epoch += extra_epoch
         for j, variable_list in enumerate(train_loader):
             d_f_loss, d_c_loss, gan_loss = model.one_step(variable_list)
             
@@ -85,8 +86,19 @@ def main(args):
         visualizer.scalar_adjuster([D_f_loss*10, D_c_loss*10, Gan_loss], epoch+1, "VTGAN_LOSS", 
                                    legend=['df_loss', 'dc_loss', 'gan_loss'])
         count += len_along_epoch
-        
-        model.save()
+        if (epoch + 1) % train_config['validation_epoch'] == 0 or epoch == train_config['epoch'] - 1:
+            BIGGER_SIZE = (1112, 1448)
+            SMALLER_SIZE = (1112//2, 1448//2)
+            validation_save_dir = check_dir(join(save_updir, f'epoch_{epoch+1}'))
+            for i in range(100):
+                slo_path = f'{train_config["val_dir"]}/{i+1}.jpg'
+                ffa_path = f'{train_config["val_dir"]}/{i+1}-{i+1}.jpg'
+                if os.path.isfile(slo_path): 
+                    var_list = get_tensor(slo_path, ffa_path, BIGGER_SIZE, SMALLER_SIZE, 0, 0)
+                    run_model_save(model.gen.module, var_list, check_dir(join(validation_save_dir, "Coarse")), 
+                                   check_dir(join(validation_save_dir, "Fine")), i+1)
+            
+            model.save(new_dir=validation_save_dir)
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

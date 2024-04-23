@@ -64,7 +64,7 @@ if __name__ == "__main__":
     
     parser.add_argument('--input_dim_width', type=int, default=1088)
     parser.add_argument('--input_dim_height', type=int, default=832)
-    parser.add_argument('--n_crops', type=int, default=40)
+    parser.add_argument('--n_crops' type=int, default=4,0)
     parser.add_argument('--output_dir', type=str, default='dataset/data/')
     # parser.add_argument('--output_dir', type=str, default='dataset/data1/')
     args = parser.parse_args()

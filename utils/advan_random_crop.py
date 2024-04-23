@@ -63,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument('--input_dim_height', type=int, default=832)
     parser.add_argument('--n_crops', type=int, default=40)
     parser.add_argument('--output_dir', type=str, default='dataset/data/')
-    parser.add_argument('--index_interval', type=list, default=[0, 134], action='append')
+    parser.add_argument('--index_interval', type=list, default=[0, 26], action='append')
     parser.add_argument('--suffix', type=str, default='.png')
     
     args = parser.parse_args()

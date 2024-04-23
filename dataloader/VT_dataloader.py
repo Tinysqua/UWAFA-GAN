@@ -3,6 +3,7 @@ from torchvision import transforms
 import numpy as np
 import glob
 from os.path import join
+from os.path import dirname as di
 import cv2 as cv
 try:
     import albumentations as A
@@ -18,7 +19,60 @@ def get_address_list(up_dir, picture_form: str):
         up_dir = f'{up_dir}/'
     return glob.glob(up_dir+'*.'+picture_form)
 
-
+class multi_slo_ffa_dataset(data.Dataset):
+    def __init__(self, up_dir, img_size, noise_level=0):
+        super(multi_slo_ffa_dataset, self).__init__()
+        # we will get the tensor from multi directory
+        if not isinstance(up_dir, list) and not isinstance(up_dir, tuple):
+            up_dir = [up_dir]
+        fu_path = []
+        for i in range(len(up_dir)):
+            fu_path += get_address_list(join(up_dir[i], "Images/"), "png")
+        self.fu_path = fu_path
+        if isinstance(img_size, int):
+            img_size = (img_size, img_size)
+        
+        self.transformer = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((img_size[0], img_size[1])),
+            transforms.RandomAffine(degrees=2*noise_level, translate=[0.04*noise_level, 0.04*noise_level], 
+                                    scale=[1-0.04*noise_level, 1+0.04*noise_level], fill=-1),
+            transforms.Normalize(mean=0.5, std=0.5)])
+        
+        self.transformer_mini = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((img_size[0]//2, img_size[1]//2)),
+            transforms.Normalize(mean=0.5, std=0.5)]) 
+        
+    def __getitem__(self, index):
+        fun_filename = self.fu_path[index]
+        super_parrent_dir = di(di(fun_filename))
+        middle_filename = fun_filename.split("/")[-1].split(".")[0]
+        first_num, second_num = int(middle_filename.split("_")[0]), int(middle_filename.split("_")[1])
+        an_filename = str(first_num)+"_mask_"+str(second_num)+".png"
+        XReal_A, XReal_A_half = self.convert_to_resize(self.funloader(fun_filename))
+        an_file_path = join(super_parrent_dir, 'Masks', an_filename)
+        XReal_B, XReal_B_half = self.convert_to_resize(self.angloader(an_file_path))
+        return [XReal_A, XReal_B, XReal_A_half, XReal_B_half]
+        
+    def convert_to_resize(self, X):
+        y1 = self.transformer(X)
+        y2 = self.transformer_mini(X)
+        return y1, y2
+    
+    def __len__(self):
+        return len(self.fu_path)
+    
+    def funloader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('RGB')
+        
+    def angloader(self, path):
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('L')
+        
 class slo_ffa_dataset(data.Dataset):
     def __init__(self, up_dir, img_size, noise_level=0):
         super(slo_ffa_dataset, self).__init__()
@@ -54,6 +108,7 @@ class slo_ffa_dataset(data.Dataset):
         return [XReal_A, XReal_B, XReal_A_half, XReal_B_half]
     
     
+    
     def convert_to_resize(self, X):
         y1 = self.transformer(X)
         y2 = self.transformer_mini(X)
@@ -73,7 +128,7 @@ class slo_ffa_dataset(data.Dataset):
             return img.convert('L')
         
 def form_dataloader(data_path, img_size, val_length, seed, batchsize, to_shuffle):
-    all_dataset = slo_ffa_dataset(data_path, img_size)
+    all_dataset = multi_slo_ffa_dataset(data_path, img_size)
     if val_length > 0:
         data_len = len(all_dataset) - val_length
         logging.info(f'Dataset length: {data_len} and the validation length: {val_length}')

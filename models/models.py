@@ -156,38 +156,59 @@ class fine_generator(torch.nn.Module):
         self.norm_layer_64 = self.norm(64)
         self.norm_layer_128 = self.norm(128)
 
-        self.encoder_block1 = encoder_block(64, 64, norm_type=norm_type)
-        self.middle_Conv2D_1 = nn.Sequential(*[nn.ReflectionPad2d(1), nn.Conv2d(64, 128, 3, padding=0)])
-        self.decoder_block1 = decoder_block(128, 64, norm_type=norm_type)
+        self.encoder_block1 = encoder_block(64, 128, norm_type=norm_type)
+        self.encoder_block2 = encoder_block(128, 256, norm_type=norm_type)
+        self.encoder_block3 = encoder_block(256, 512, norm_type=norm_type)
+        self.middle_Conv2D_1 = nn.Sequential(*[nn.ReflectionPad2d(1), nn.Conv2d(512, 512, 3, padding=0), self.norm(512)])
+        self.decoder_block1 = decoder_block(512, 256, norm_type=norm_type)
+        self.decoder_block2 = decoder_block(512, 128, norm_type=norm_type)
+        self.decoder_block3 = decoder_block(256, 64, norm_type=norm_type)
+        
         self.Attention1 = Attention(64, 64, norm_type=norm_type)
+        self.Attention2 = Attention(128, 128, norm_type=norm_type)
+        self.Attention3 = Attention(256, 256, norm_type=norm_type)
         
         residual_list = []
         self.n_blocks = n_blocks
         for _ in range(n_blocks-1):
-            residual_list.append(novel_residual_block(128, Separable=use_separable, norm_type=norm_type))
+            residual_list.append(novel_residual_block(512, Separable=use_separable, norm_type=norm_type))
         self.Residual_block = torch.nn.Sequential(*residual_list)
 
-    def forward(self, X_input, X_coarse):
+    def forward(self, X_input:torch.Tensor, X_coarse:list):
         # Downsampling layers
         X = self.ReflectionPad3(X_input)
         X = self.Conv_7_1(X)
         X = self.norm_layer_64(X)
-        X_pre_down = self.LeakyReLU(X)
+        X = self.LeakyReLU(X)
 
         X_down1 = self.encoder_block1(X)
-        X= torch.add(X_coarse, X_down1)
         
-        X = self.middle_Conv2D_1(X)
-        X = self.norm_layer_128(X)
+        
+        X_down2 = self.encoder_block2(X_down1)
+        X= torch.add(X_coarse[0], X_down2)
+        
+        X_down3 = self.encoder_block3(X)
+        X= torch.add(X_coarse[1], X_down3)
+        
+        X = self.middle_Conv2D_1(X_down3)
         X = self.LeakyReLU(X)
 
         
         X = self.Residual_block(X)
         
+        X += X_coarse[2]
         X_up1 = self.decoder_block1(X)
-        X_up1_att = self.Attention1(X_pre_down)
-        X_up1_add = torch.add(X_up1_att, X_up1)
-        X = self.ReflectionPad3(X_up1_add)
+        X_up1 += X_coarse[3]
+        X_up1_att = self.Attention3(X_down2)
+        X_up1_add = torch.cat([X_up1_att, X_up1], dim=1)
+        
+        X_up2 = self.decoder_block2(X_up1_add)
+        X_up2_att = self.Attention2(X_down1)
+        X_up2_add = torch.cat([X_up2_att, X_up2], dim=1)
+        
+        X_up3 = self.decoder_block3(X_up2_add)
+        
+        X = self.ReflectionPad3(X_up3)
         X = self.Conv_7_1_2(X)
         X = torch.tanh(X)
         return X
@@ -208,34 +229,31 @@ class coarse_generator(torch.nn.Module):
         self.n_downsampling=n_downsampling
 
         self.Conv_1 = torch.nn.Conv2d(in_channels=3, out_channels=ncf, kernel_size=(7, 7), padding=0)
-        self.Conv_2 = torch.nn.Conv2d(in_channels=64, out_channels=1, kernel_size=(7, 7), padding=0)
+        self.Conv_2 = torch.nn.Conv2d(in_channels=128, out_channels=1, kernel_size=(7, 7), padding=0)
 
         self.norm_layer_64 = self.norm(64)
         self.LeakyReLU = torch.nn.LeakyReLU(0.2)
 
         self.ReflectionPad3 = torch.nn.ReflectionPad2d(3)
 
-        up_filters = int(self.ncf * pow(2, (self.n_downsampling - 0)) / 2)
-        self.decoder_block1 = decoder_block(256, up_filters, norm_type=norm_type)
+        self.decoder_block1 = decoder_block(512, 256, norm_type=norm_type)
 
-        up_filters_2 = int(self.ncf * pow(2, (self.n_downsampling - 1)) / 2)
-        self.decoder_block2 = decoder_block(128, up_filters_2, norm_type=norm_type)
+        self.decoder_block2 = decoder_block(512, 64, norm_type=norm_type)
 
-        self.Attention1 = Attention(128, 128, norm_type=norm_type)
+        self.Attention1 = Attention(256, 256, norm_type=norm_type)
         self.Attention2 = Attention(64, 64, norm_type=norm_type)
 
-        down_filters_1 = 64 * pow(2, 0) * 2
-        self.encoder_block1 = encoder_block(64, down_filters_1, norm_type=norm_type)
+        self.encoder_block1 = encoder_block(64, 256, norm_type=norm_type)
 
-        down_filters_2 = 64 * pow(2, 1) * 2
-        self.encoder_block2 = encoder_block(128, down_filters_2, norm_type=norm_type)
-        res_filters = pow(2, n_downsampling)
+        self.encoder_block2 = encoder_block(256, 512, norm_type=norm_type)
+        
         residual_list = []
         for _ in range(n_blocks):
-            residual_list.append(novel_residual_block(filters=ncf*res_filters, Separable=use_separable, norm_type=norm_type))
+            residual_list.append(novel_residual_block(filters=512, Separable=use_separable, norm_type=norm_type))
         self.novel_Residual_block1 = torch.nn.Sequential(*residual_list)
 
     def forward(self,X_input):
+        feature_out = []
         X = self.ReflectionPad3(X_input)
         X = self.Conv_1(X)
         X = self.norm_layer_64(X)
@@ -243,21 +261,23 @@ class coarse_generator(torch.nn.Module):
 
         # Downsampling layers
         X_down1 = self.encoder_block1(X)
+        feature_out.append(X_down1)
         X_down2 = self.encoder_block2(X_down1)
+        feature_out.append(X_down2)
         X = X_down2
 
         
         X = self.novel_Residual_block1(X)
-
+        feature_out.append(X)
         # Upsampling layers
         X_up1 = self.decoder_block1(X)
         X_up1_att = self.Attention1(X_down1)
-        X_up1_add = torch.add(X_up1_att, X_up1)
-
+        X_up1_add = torch.cat([X_up1_att, X_up1], dim=1)
+        feature_out.append(X_up1)
+        
         X_up2 = self.decoder_block2(X_up1_add)
         X_up2_att = self.Attention2(X_pre_down)
-        X_up2_add = torch.add(X_up2_att, X_up2)
-        feature_out = X_up2_add
+        X_up2_add = torch.cat([X_up2_att, X_up2], dim=1)
 
         X = self.ReflectionPad3(X_up2_add)
         X =self.Conv_2(X)
@@ -265,4 +285,13 @@ class coarse_generator(torch.nn.Module):
         return X, feature_out
 
 
-
+if __name__ == "__main__":
+    a = torch.randn((1, 3, 416, 544))
+    b = torch.randn((1, 3, 416*2, 544*2))
+    model = coarse_generator()
+    model_model = fine_generator()
+    _, feature = model(a)
+    model_model(b, feature)
+    for i in feature:
+        print("Shape: ", i.shape)
+    

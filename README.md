@@ -6,7 +6,7 @@ This code is an enhanced version of the pytorch implementation of the [UWAT-GAN]
 <br><br>
 
 ## Generation UWF-FA from UWF-SLO with nice detail 
-![](asset/Good_judgements.png)
+![](asset/UWFAF-GAN_visual_comparison_page-0001.jpg)
 
 ## Pre-requisties
 - Linux
@@ -15,15 +15,31 @@ This code is an enhanced version of the pytorch implementation of the [UWAT-GAN]
 
 ## How to train
 ### Preparation of the data
-We have proposed a example in the path "dataset/example_pairs", firstly we need to random crop them to the training dataset. 
+We are diligently navigating through ethical and approval procedures to provide large quantities of trainable data that can enhance the comprehensiveness of our open-source code. However, at present, we are unable to publicly release substantial volumes of data. We appreciate your understanding regarding this matter.
+However, if you have your own data, you can still train and generate using our code.
+We assume your data, with suffix as ".jpg", are in the path **"dataset/yours"**, firstly we need to random crop them into the training dataset. 
 ```
-python utils/advan_random_crop.py --datadir dataset/example_pairs  --output_dir dataset/data_sloeaffa --suffix .jpg --index_interval 0 --index_interval 6
+python utils/advan_random_crop.py --datadir dataset/yours  --output_dir dataset/data_slo2ffa --suffix .jpg --index_interval 0 --index_interval 100 
 ```
-This will crop the suffix-jpg images from path "dataset/example_pairs" and put the result into the path "dataset/data_sloeaffa". Then the training procedure can be exerted. Find the yaml file in the path "config/train_config.yaml", making sure the **data_path** of it is correct. 
+This will crop the **100** pairs suffix-jpg images from path **"dataset/yours"** and put the result into the path **"dataset/data_slo2ffa"**. Then the training procedure can be exerted. Find the yaml file in the path "config/train_config.yaml", making sure the **data_path** of it is correct. 
 
-<br><br>
-![](asset/parameters.png)
-<br><br>
+Part of train_config.yaml
+```
+batchsize: 4
+epoch: 40
+num_D: 2
+n_layers: 4
+
+# validation setting
+validation_epoch: 41
+val_dir: ''
+
+# dataloader
+data_path: ["dataset/data_slo2ffa"]
+val_length: 900
+seed: -1 
+img_size: [832, 1088]
+```
 
 and run the command:
 ```
@@ -31,11 +47,11 @@ python -u train_changed.py
 ```
 
 ## Get start to the evaluation 
+We provide 6 pairs of examples for evaluation in **dataset/example_pairs**, if you have only UWF-SLO and you can try it as well. To evaluate, the first UWF-SLO should be named as 1.jpg, the second as 2.jpg... Just like it in **dataset/example_pairs**
 ### checkpoint configure
-Download the [checkpoint](https://drive.google.com/drive/folders/1_Ax2anHkz2CfKJu68UXNNDQ-c7PShIpe?usp=sharing) and make sure the path "./weights/exp_8_17" correct. Directory "exp_8_17" should contains four elements:
+Download the [exp_final](https://drive.google.com/drive/folders/1_Ax2anHkz2CfKJu68UXNNDQ-c7PShIpe?usp=sharing) and make sure the path "./weights/exp_final" correct. Directory "exp_final" should contain three elements:
 ```
-├── exp_8_17
-    ├──config_exp_8_17.yaml
+├── exp_final
     ├──discriminator.pt
     ├──generator.pt
     ├──reg.pt
@@ -43,15 +59,8 @@ Download the [checkpoint](https://drive.google.com/drive/folders/1_Ax2anHkz2CfKJ
 
 and run the command:
 ``` bash
-function Func1(){
-    count=1
-    while (($count < 7))
-    do python -u utils/Model_evaluation_changed.py --updir dataset/example_pairs --index $count --model_updir 'weights/exp_8_17'
-    count=$(($count+1))
-    done
-}
-
-Func1
+python -u utils/Model_evaluation_without_ffa.py --updir dataset/example_pairs \
+    --model_updir weights/exp_final
 ```
 
 The result will be saved in the path dataset/example_pairs 

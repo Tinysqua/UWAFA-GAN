@@ -1,27 +1,38 @@
-batchsize: 8
-epoch: 9
+batchsize: 4
+epoch: 40
 num_D: 2
-n_layers: 3
+n_layers: 4
+
+# validation setting
+validation_epoch: 41
+val_dir: ''
 
 # dataloader
-data_path: "dataset/data_sloeaffa"
-val_length: 100
+data_path: ["dataset/data_slolaffa", 
+            "dataset/pure_koufu_la", 
+            "dataset/jingmai_extra_lat"]
+val_length: 900
 seed: -1 
 img_size: [832, 1088]
 
 
 
-if_resume: False
+if_resume: True
 to_shuffle: True
 use_separable: False
-updir: weights/exp_8_28
+updir: weights/exp_2_9/weights/exp_2_9_epoch_24
+save_updir: weights/exp_2_10
 norm_name: 'instance'
 
 # optim parameters
 nlr: 0.0002
 nbeta1: 0.5
 
+# multi loss analysis
+no_vgg: False
+no_fm: False
+
 # reg stuff 
-use_reg: False
+use_reg: True
 noise_level: 1
 

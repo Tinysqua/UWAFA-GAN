@@ -81,7 +81,9 @@ class Para_combine_trainer:
                  feat_loss_computer, 
                  vgg_loss, 
                  l1_loss, 
-                 smooth_loss):
+                 smooth_loss, 
+                 no_vgg, 
+                 no_fm):
         self.use_reg = use_reg
         self.gen = nn.DataParallel(Whole_generator(norm_name)).cuda()
         norm_layer = nn.InstanceNorm2d if norm_name is 'instance' else nn.BatchNorm2d
@@ -101,6 +103,8 @@ class Para_combine_trainer:
         self.n_layers = n_layers
         self.num_D_small = num_D_small
         self.n_layers_small = n_layers_small
+        self.no_vgg = no_vgg
+        self.no_fm = no_fm
         
     def prepare_training(self, nlr, nbeta1):
         self.optimizerD_f = optim.Adam(self.dis.module.fine_dis.parameters(), lr=nlr, betas=(nbeta1, 0.999))
@@ -182,6 +186,14 @@ class Para_combine_trainer:
                                                     n_layers=n_layers_small)
         loss_G_C_VGG = 10 * vgg_loss(X_fakeB_half_stacked, X_realB_half_stacked)
         
+        # 2024.1.30 to meet the need of experiment of loss, the assignment of loss is set.
+        if self.no_vgg:
+            loss_G_F_VGG = 0
+            loss_G_C_VGG = 0
+        if self.no_fm:
+            loss_G_F_GAN_Feat = 0
+            loss_G_C_GAN_Feat = 0
+        
         if self.use_reg:
             loss_R_A = 20*l1_loss(sysregist_A2B, X_realB) + 10*smooth_loss(trans)
             gan1_loss = loss_G_F_GAN + loss_G_F_GAN_Feat + loss_G_F_VGG + loss_R_A
@@ -204,11 +216,14 @@ class Para_combine_trainer:
         
         return d_f_loss, d_c_loss, gan_loss
     
-    def save(self):
-        self.gen.module.save_checkpoints(self.updir)
-        self.dis.module.save_checkpoints(self.updir)
+    def save(self, new_dir=''):
+        updir = self.updir
+        if len(new_dir): # manual set
+            updir = new_dir
+        self.gen.module.save_checkpoints(updir)
+        self.dis.module.save_checkpoints(updir)
         if self.use_reg:
-            self.ra.module.save_checkpoints(self.updir)
+            self.ra.module.save_checkpoints(updir)
         
     def load(self):
         self.gen.module.load_checkpoints(self.updir)
@@ -244,7 +259,7 @@ class Combine_trainer:
                  smooth_loss):
         self.use_reg = use_reg
         self.gen = nn.DataParallel(Whole_generator(norm_name)).cuda()
-        norm_layer = nn.InstanceNorm2d if norm_name is 'instance' else nn.BatchNorm2d
+        norm_layer = nn.InstanceNorm2d if (norm_name is 'instance') else nn.BatchNorm2d
         self.dis = nn.DataParallel(Whole_discriminator(norm_layer, num_D, num_D_small, n_layers, n_layers_small)).cuda()
         if self.use_reg:
             self.ra = nn.DataParallel(Reg(img_size[0], img_size[1], 1, 1)).cuda()
