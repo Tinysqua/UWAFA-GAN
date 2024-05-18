@@ -64,3 +64,14 @@ python -u utils/Model_evaluation_without_ffa.py --updir dataset/example_pairs \
 ```
 
 The result will be saved in the path dataset/example_pairs 
+
+## Citation
+```
+@article{ge2024uwafa,
+  title={UWAFA-GAN: Ultra-Wide-Angle Fluorescein Angiography Transformation via Multi-scale Generation and Registration Enhancement},
+  author={Ge, Ruiquan and Fang, Zhaojie and Wei, Pengxue and Chen, Zhanghao and Jiang, Hongyang and Elazab, Ahmed and Li, Wangting and Wan, Xiang and Zhang, Shaochong and Wang, Changmiao},
+  journal={IEEE Journal of Biomedical and Health Informatics},
+  year={2024},
+  publisher={IEEE}
+}
+```
