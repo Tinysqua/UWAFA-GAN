@@ -1,5 +1,5 @@
 # **UWAFA-GAN**
-This code is an enhanced version of the pytorch implementation of the [UWAT-GAN](https://github.com/Tinysqua/UWAT-GAN) and our paper "UWAT-GAN: Ultra-Wide-Angle transformation using Multi-scale Generative Adversarial Nets". It can be used to turning UWF scanning laser ophthalmoscopy(UWF-SLO) to the UWF fluorescein angiography(UWF-FA) and display the tiny vascular lesion areas. It could be trained on a little misalignment paired UWF-SLO and UWF-FA. 
+This code is the pytorch implementation of the **UWAFA-GAN** which has been accepted by JBHI 2024 named "UWAFA-GAN: Ultra-Wide-Angle Fluorescein Angiography Transformation via Multi-scale Generation and Registration Enhancement". It can be used to turning UWF scanning laser ophthalmoscopy(UWF-SLO) to the UWF fluorescein angiography(UWF-FA) and display the tiny vascular lesion areas and could be trained on a little misalignment paired UWF-SLO and UWF-FA. 
 
 <br><br>
 ![](./asset/TMI_overall_architecture-1.png)
